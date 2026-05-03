@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { Resend } from 'resend';
 
-const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!;
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID!;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET!;
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
-const BASE_URL = 'https://api-m.sandbox.paypal.com';
+const BASE_URL = process.env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
 
 async function getAccessToken(): Promise<string> {
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
         try {
           const resend = new Resend(RESEND_API_KEY);
           await resend.emails.send({
-            from: 'Randyproductions <onboarding@resend.dev>',
+            from: `Randyproductions <${process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'}>`,
             to: [buyerEmail],
             subject: `Your Files Are Ready — ${beat.title} (Order ${transactionId})`,
             html: `

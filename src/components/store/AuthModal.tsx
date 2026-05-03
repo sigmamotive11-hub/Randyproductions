@@ -4,9 +4,6 @@ import { useStore } from '@/store/use-store';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'prod.randy1@gmail.com';
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'ZnRnLyh7JuBYDXk';
-
 export default function AuthModal() {
   const { showAuth, setShowAuth, setUser, setView } = useStore();
   const [isLogin, setIsLogin] = useState(true);
@@ -22,13 +19,23 @@ export default function AuthModal() {
     setError('');
     setLoading(true);
 
-    // Admin shortcut
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      setUser({ email, isAdmin: true });
-      setShowAuth(false);
-      setView('admin');
-      setLoading(false);
-      return;
+    // Admin login via server-side API route (credentials never exposed to client)
+    try {
+      const adminRes = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (adminRes.ok) {
+        setUser({ email, isAdmin: true });
+        setShowAuth(false);
+        setView('admin');
+        setLoading(false);
+        return;
+      }
+      // Not admin — proceed with Supabase auth
+    } catch {
+      // Admin route not available, proceed with Supabase
     }
 
     try {
