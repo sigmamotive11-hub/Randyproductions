@@ -96,7 +96,7 @@ export default function Home() {
         )}
       </main>
 
-      {view !== 'home' && view !== 'admin' && <Footer />}
+      {view !== 'admin' && <Footer />}
 
       <AudioPlayer />
       <AuthModal />
