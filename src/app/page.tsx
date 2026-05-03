@@ -21,17 +21,22 @@ export default function Home() {
   const { view, beats, setBeats, setLoading, loading, user } = useStore();
   const fetchedRef = useRef(false);
 
-  // Fetch beats — with timeout fallback so we never get stuck loading
+  // Load beats — use fallback immediately, then try Supabase in background
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
+    // Immediately show fallback beats so page renders (including 3D model)
+    setBeats(fallbackBeats);
+    setLoading(false);
+
+    // Then try Supabase in background
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
 
     (async () => {
       try {
-        const { data, error } = await fetch(
+        const { data } = await fetch(
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/beats?select=*&order=created_at.desc`,
           {
             headers: {
@@ -50,15 +55,12 @@ export default function Home() {
             image: b.image || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
           }));
           setBeats(formatted);
-        } else {
-          setBeats(fallbackBeats);
         }
+        // If Supabase fails, we already have fallback beats showing
       } catch {
-        // Supabase failed or timed out — use fallback
-        setBeats(fallbackBeats);
+        // Keep fallback beats
       } finally {
         clearTimeout(timeout);
-        setLoading(false);
       }
     })();
   }, [setBeats, setLoading]);

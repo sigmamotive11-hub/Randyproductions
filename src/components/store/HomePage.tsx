@@ -2,14 +2,13 @@
 
 import { useStore } from '@/store/use-store';
 import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
 import type { Beat } from '@/data/beats';
 
 // Dynamic import Three.js to avoid SSR issues — it only renders on client
 const ThreeHero = dynamic(() => import('@/components/store/ThreeHero'), {
   ssr: false,
   loading: () => (
-    <div className="absolute top-0 right-0 w-full h-full z-0 hidden md:flex items-center justify-center">
+    <div className="absolute top-0 right-0 w-full h-full z-0 flex items-center justify-center">
       <div className="w-16 h-16 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin opacity-30" />
     </div>
   ),
@@ -46,11 +45,9 @@ export default function HomePage() {
             }} />
         </div>
 
-        {/* 3D Drum — right side */}
-        <div className="absolute top-0 right-0 w-[55%] h-full z-0 hidden lg:block">
-          <Suspense fallback={null}>
-            <ThreeHero />
-          </Suspense>
+        {/* 3D Drum — full background */}
+        <div className="absolute top-0 right-0 w-full h-full z-0">
+          <ThreeHero />
         </div>
 
         {/* Content — left side */}
