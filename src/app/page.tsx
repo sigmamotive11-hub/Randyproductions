@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '@/store/use-store';
-import { supabase } from '@/lib/supabase';
 import { fallbackBeats } from '@/data/beats';
 
 import Navbar from '@/components/store/Navbar';
@@ -20,18 +19,30 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 
 export default function Home() {
   const { view, beats, setBeats, setLoading, loading, user } = useStore();
+  const fetchedRef = useRef(false);
 
-  // Fetch beats from Supabase on mount (only for non-admin views)
+  // Fetch beats — with timeout fallback so we never get stuck loading
   useEffect(() => {
-    if (beats.length > 0) return;
-    const fetchBeats = async () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    (async () => {
       try {
-        const { data, error } = await supabase
-          .from('beats')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data && data.length > 0) {
+        const { data, error } = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/beats?select=*&order=created_at.desc`,
+          {
+            headers: {
+              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`,
+            },
+            signal: controller.signal,
+          }
+        ).then(r => r.json());
+
+        if (data && Array.isArray(data) && data.length > 0) {
           const formatted = data.map((b: Record<string, unknown>) => ({
             ...b,
             wav_link: b.wav_link || '',
@@ -43,20 +54,21 @@ export default function Home() {
           setBeats(fallbackBeats);
         }
       } catch {
+        // Supabase failed or timed out — use fallback
         setBeats(fallbackBeats);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
-    };
-    fetchBeats();
-  }, [beats.length, setBeats, setLoading]);
+    })();
+  }, [setBeats, setLoading]);
 
   // Auto-scroll on view change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [view]);
 
-  // If logged in as admin and on admin view, show admin dashboard
+  // Admin dashboard
   if (view === 'admin' && user?.isAdmin) {
     return <AdminDashboard />;
   }
@@ -84,7 +96,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Only show footer on non-admin, non-home views */}
       {view !== 'home' && view !== 'admin' && <Footer />}
 
       <AudioPlayer />

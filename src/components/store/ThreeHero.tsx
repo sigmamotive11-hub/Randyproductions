@@ -52,8 +52,8 @@ function Drum3D() {
 
 export default function ThreeHero() {
   return (
-    <div className="absolute top-0 right-[-5%] w-[60%] h-full z-0 hidden md:block">
-      <Canvas camera={{ position: [0, 0, 6] }}>
+    <div className="absolute top-0 right-0 w-full h-full z-0">
+      <Canvas camera={{ position: [0, 0, 6] }} style={{ background: 'transparent' }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 10, 5]} intensity={1.5} color="#d4af37" />
         <pointLight position={[-10, -10, -10]} intensity={1} color="#ffffff" />
