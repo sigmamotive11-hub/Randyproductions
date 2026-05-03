@@ -1,0 +1,16 @@
+{
+  "name": "antigravity-beatstore",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test:paypal": "node tools/verify_paypal.js",
+    "test:resend": "node tools/verify_resend.js",
+    "test:mega": "node tools/verify_mega.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+
+    "megajs": "^1.1.4",
+    "resend": "^3.2.0"
+  }
+}

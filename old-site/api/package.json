@@ -1,0 +1,10 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "Vercel Serverless Functions for Randyproductions-store",
+  "main": "webhook.js",
+  "type": "module",
+  "dependencies": {
+    "resend": "^3.2.0"
+  }
+}
