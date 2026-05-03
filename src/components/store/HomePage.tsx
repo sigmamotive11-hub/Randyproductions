@@ -8,8 +8,8 @@ import type { Beat } from '@/data/beats';
 const ThreeHero = dynamic(() => import('@/components/store/ThreeHero'), {
   ssr: false,
   loading: () => (
-    <div className="absolute top-0 right-0 w-full h-full z-0 flex items-center justify-center">
-      <div className="w-16 h-16 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin opacity-30" />
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-12 h-12 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin opacity-30" />
     </div>
   ),
 });
@@ -45,14 +45,10 @@ export default function HomePage() {
             }} />
         </div>
 
-        {/* 3D Drum — full background */}
-        <div className="absolute top-0 right-0 w-full h-full z-0">
-          <ThreeHero />
-        </div>
-
-        {/* Content — left side */}
-        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full">
-          <div className="max-w-[650px] pt-32 pb-20">
+        {/* Hero content — text left, 3D drum right */}
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full flex items-center min-h-screen">
+          {/* Left: Text content */}
+          <div className="flex-1 min-w-0 pt-24 pb-20">
             {/* Tag */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(212,175,55,0.25)] mb-8">
               <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
@@ -101,6 +97,13 @@ export default function HomePage() {
                   <p className="text-[rgba(255,255,255,0.3)] text-xs uppercase tracking-wider mt-1">{s.label}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Right: 3D Golden Drum */}
+          <div className="hidden lg:flex flex-1 items-center justify-center h-screen relative">
+            <div className="w-full h-full max-w-[600px] relative">
+              <ThreeHero />
             </div>
           </div>
         </div>

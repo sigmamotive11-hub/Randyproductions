@@ -67,3 +67,27 @@ Stage Summary:
 - Post-processing: bloom, chromatic aberration, vignette for cinematic feel
 - Dynamic elements: mouse tracking, floating animation, orbiting rings, particles, sparkles
 - All using MeshPhysicalMaterial for maximum visual fidelity
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Resize 3D drum model, make it golden, position next to Randy Productions text
+
+Work Log:
+- Changed drum shell color from dark red (#6B0F0F) to rich gold (#C8961E) with high metalness (0.65)
+- Changed rim/lug/inlay colors to brighter gold (#FFD700, #D4AF37) for premium golden look
+- Reduced drum model scale from 1.6 to 0.55 — now a compact accent element instead of a giant background piece
+- Removed Stars background (no longer full-screen), reduced particles from 120 to 60, sparkles from 60 to 30
+- Reduced orbit ring radii proportionally (2.2→1.6, 2.6→1.9, 3.0→2.2)
+- Adjusted camera: FOV 40, position [0, 0.3, 4] for tighter framing of the smaller drum
+- Changed ThreeHero container from absolute full-screen overlay to a contained inline component
+- Restructured HomePage hero section: flex layout with text on left, 3D drum on right (hidden on mobile)
+- 3D drum now sits in a max-w-[600px] container on the right side of the hero
+- Updated dynamic import loading state to match new contained layout
+- Build compiles successfully with zero errors
+
+Stage Summary:
+- 3D drum is now golden with metallic finish, compact size, positioned on the right side of the hero
+- Hero layout is now split: Randy Productions text on left, golden spinning drum on right
+- Mobile responsive: 3D drum hidden on small screens (hidden lg:flex)
+- Drum no longer dominates the page — it's an elegant accent element

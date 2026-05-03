@@ -1,15 +1,16 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Float, Sparkles, Stars } from '@react-three/drei';
+import { Float, Sparkles } from '@react-three/drei';
 import { useRef, useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
 
 /* ───────────── COLORS ───────────── */
-const DRUM_SHELL = '#6B0F0F';
+const DRUM_SHELL = '#C8961E';
+const DRUM_SHELL_DARK = '#9A7216';
 const CREAM = '#F5E6D3';
-const BRASS = '#C9A84C';
-const GOLD = '#d4af37';
+const BRASS = '#D4AF37';
+const GOLD = '#FFD700';
 
 /* ═══════════════════════════════════════════════
    DRUM SHELL — Lathe geometry barrel shape
@@ -37,15 +38,15 @@ function DrumShell() {
       <latheGeometry args={[points, 64]} />
       <meshStandardMaterial
         color={DRUM_SHELL}
-        roughness={0.35}
-        metalness={0.1}
+        roughness={0.28}
+        metalness={0.65}
       />
     </mesh>
   );
 }
 
 /* ═══════════════════════════════════════════════
-   DRUM HEAD — Cream/white top & bottom
+   DRUM HEAD — Cream top & bottom
    ═══════════════════════════════════════════════ */
 function DrumHead({ y }: { y: number }) {
   return (
@@ -68,7 +69,7 @@ function DrumRim({ y }: { y: number }) {
   return (
     <mesh position={[0, y, 0]}>
       <torusGeometry args={[1.08, 0.045, 16, 100]} />
-      <meshStandardMaterial color={BRASS} roughness={0.15} metalness={0.95} />
+      <meshStandardMaterial color={BRASS} roughness={0.12} metalness={0.95} />
     </mesh>
   );
 }
@@ -87,15 +88,15 @@ function TensionRods() {
           <group key={i} position={[x, 0, z]}>
             <mesh>
               <cylinderGeometry args={[0.018, 0.018, 1.3, 8]} />
-              <meshStandardMaterial color={BRASS} roughness={0.15} metalness={0.95} />
+              <meshStandardMaterial color={BRASS} roughness={0.12} metalness={0.95} />
             </mesh>
             <mesh position={[0, 0.68, 0]}>
               <boxGeometry args={[0.08, 0.06, 0.08]} />
-              <meshStandardMaterial color={BRASS} roughness={0.2} metalness={0.9} />
+              <meshStandardMaterial color={BRASS} roughness={0.15} metalness={0.9} />
             </mesh>
             <mesh position={[0, -0.68, 0]}>
               <boxGeometry args={[0.08, 0.06, 0.08]} />
-              <meshStandardMaterial color={BRASS} roughness={0.2} metalness={0.9} />
+              <meshStandardMaterial color={BRASS} roughness={0.15} metalness={0.9} />
             </mesh>
           </group>
         );
@@ -117,7 +118,7 @@ function Lugs() {
         return (
           <mesh key={i} position={[x, 0, z]} rotation={[0, -angle, 0]}>
             <boxGeometry args={[0.12, 0.22, 0.06]} />
-            <meshStandardMaterial color={BRASS} roughness={0.2} metalness={0.9} />
+            <meshStandardMaterial color={BRASS} roughness={0.15} metalness={0.9} />
           </mesh>
         );
       })}
@@ -134,7 +135,7 @@ function DecorativeInlay() {
       {[0.0, 0.15, -0.15].map((y, i) => (
         <mesh key={i} position={[0, y, 0]}>
           <torusGeometry args={[1.01 + Math.abs(y) * 0.08, 0.015, 12, 100]} />
-          <meshStandardMaterial color={GOLD} roughness={0.1} metalness={1} emissive={GOLD} emissiveIntensity={0.15} />
+          <meshStandardMaterial color={GOLD} roughness={0.08} metalness={1} emissive={GOLD} emissiveIntensity={0.2} />
         </mesh>
       ))}
     </group>
@@ -162,7 +163,7 @@ function SnareStrings() {
 }
 
 /* ═══════════════════════════════════════════════
-   COMPLETE DRUM — Spinning assembly
+   COMPLETE DRUM — Spinning assembly (small scale)
    ═══════════════════════════════════════════════ */
 function DrumModel() {
   const groupRef = useRef<THREE.Group>(null);
@@ -175,19 +176,19 @@ function DrumModel() {
     // Continuous spin
     groupRef.current.rotation.y = t * 0.5;
     // Gentle tilt
-    groupRef.current.rotation.x = Math.sin(t * 0.3) * 0.1 + 0.15;
-    groupRef.current.rotation.z = Math.cos(t * 0.25) * 0.05;
+    groupRef.current.rotation.x = Math.sin(t * 0.3) * 0.08 + 0.15;
+    groupRef.current.rotation.z = Math.cos(t * 0.25) * 0.04;
 
     // Hover scale
-    const target = hovered ? 1.08 : 1.0;
+    const target = hovered ? 1.06 : 1.0;
     groupRef.current.scale.lerp(new THREE.Vector3(target, target, target), 0.05);
   });
 
   return (
-    <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.4} floatingRange={[-0.1, 0.1]}>
+    <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3} floatingRange={[-0.05, 0.05]}>
       <group
         ref={groupRef}
-        scale={1.6}
+        scale={0.55}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
@@ -200,7 +201,7 @@ function DrumModel() {
         <Lugs />
         <DecorativeInlay />
         <SnareStrings />
-        <pointLight position={[0, 0, 0]} color="#d4af37" intensity={2} distance={3} />
+        <pointLight position={[0, 0, 0]} color="#d4af37" intensity={1.5} distance={3} />
       </group>
     </Float>
   );
@@ -223,17 +224,17 @@ function OrbitRing({ radius, speed, offset }: { radius: number; speed: number; o
 
   return (
     <mesh ref={ref}>
-      <torusGeometry args={[radius, 0.008, 8, 200]} />
-      <meshBasicMaterial color="#d4af37" transparent opacity={0.2} />
+      <torusGeometry args={[radius, 0.006, 8, 200]} />
+      <meshBasicMaterial color="#d4af37" transparent opacity={0.15} />
     </mesh>
   );
 }
 
 /* ═══════════════════════════════════════════════
-   GOLD PARTICLES — Floating dust
+   GOLD PARTICLES — Floating dust (subtle)
    ═══════════════════════════════════════════════ */
 function GoldParticles() {
-  const count = 120;
+  const count = 60;
   const ref = useRef<THREE.Points>(null);
 
   const positions = useMemo(() => {
@@ -241,7 +242,7 @@ function GoldParticles() {
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.random() * Math.PI;
-      const r = 2.5 + Math.random() * 3;
+      const r = 1.5 + Math.random() * 2;
       arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.5;
       arr[i * 3 + 2] = r * Math.cos(phi);
@@ -265,10 +266,10 @@ function GoldParticles() {
   return (
     <points ref={ref} geometry={geometry}>
       <pointsMaterial
-        size={0.03}
+        size={0.025}
         color="#d4af37"
         transparent
-        opacity={0.6}
+        opacity={0.5}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}
@@ -278,18 +279,19 @@ function GoldParticles() {
 }
 
 /* ═══════════════════════════════════════════════
-   MOUSE CAMERA — Reactive with proper useEffect
+   MOUSE CAMERA — Subtle parallax
    ═══════════════════════════════════════════════ */
 function MouseCamera() {
   const { camera } = useThree();
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
+      const rect = e.currentTarget as Document;
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       const y = -(e.clientY / window.innerHeight) * 2 + 1;
 
-      camera.position.x += (x * 0.8 - camera.position.x) * 0.02;
-      camera.position.y += (y * 0.4 + 0.5 - camera.position.y) * 0.02;
+      camera.position.x += (x * 0.3 - camera.position.x) * 0.02;
+      camera.position.y += (y * 0.2 + 0.3 - camera.position.y) * 0.02;
       camera.lookAt(0, 0, 0);
     };
 
@@ -301,13 +303,13 @@ function MouseCamera() {
 }
 
 /* ═══════════════════════════════════════════════
-   MAIN SCENE EXPORT
+   MAIN SCENE EXPORT — Contained, not full-screen
    ═══════════════════════════════════════════════ */
 export default function ThreeHero() {
   return (
-    <div className="absolute top-0 right-0 w-full h-full z-0">
+    <div className="w-full h-full">
       <Canvas
-        camera={{ position: [0, 0.5, 5.5], fov: 45 }}
+        camera={{ position: [0, 0.3, 4], fov: 40 }}
         style={{ background: 'transparent' }}
         gl={{ antialias: true, alpha: true }}
         dpr={[1, 2]}
@@ -315,25 +317,22 @@ export default function ThreeHero() {
         <MouseCamera />
 
         {/* Lighting */}
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[5, 10, 5]} intensity={1.5} color="#d4af37" />
-        <directionalLight position={[-5, 5, -5]} intensity={0.8} color="#ffffff" />
-        <pointLight position={[0, 0, 0]} color="#d4af37" intensity={1} distance={8} />
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 10, 5]} intensity={1.8} color="#FFD700" />
+        <directionalLight position={[-3, 5, -3]} intensity={0.6} color="#ffffff" />
+        <pointLight position={[0, 0, 0]} color="#d4af37" intensity={0.8} distance={6} />
 
         {/* Drum */}
         <DrumModel />
 
         {/* Orbit rings */}
-        <OrbitRing radius={2.2} speed={0.3} offset={0} />
-        <OrbitRing radius={2.6} speed={0.2} offset={1} />
-        <OrbitRing radius={3.0} speed={0.15} offset={2} />
+        <OrbitRing radius={1.6} speed={0.3} offset={0} />
+        <OrbitRing radius={1.9} speed={0.2} offset={1} />
+        <OrbitRing radius={2.2} speed={0.15} offset={2} />
 
         {/* Particles */}
         <GoldParticles />
-        <Sparkles count={60} scale={6} size={1.5} speed={0.3} color="#d4af37" opacity={0.3} />
-
-        {/* Stars background */}
-        <Stars radius={15} depth={50} count={800} factor={2} saturation={0} fade speed={0.5} />
+        <Sparkles count={30} scale={4} size={1.2} speed={0.3} color="#d4af37" opacity={0.2} />
       </Canvas>
     </div>
   );
