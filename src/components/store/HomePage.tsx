@@ -1,3 +1,4 @@
+```tsx
 'use client';
 
 import { useStore } from '@/store/use-store';
@@ -92,7 +93,7 @@ export default function HomePage() {
 
           {/* Right: 2D Logo with gold glow */}
           <div className="flex flex-1 items-center justify-center relative order-1 lg:order-2 w-full lg:h-screen lg:w-auto">
-            <div className="relative w-[180px] h-[180px] sm:w-[240px] sm:h-[240px] md:w-[300px] md:h-[300px] lg:w-[380px] lg:h-[380px] flex items-center justify-center">
+            <div className="relative w-[240px] h-[240px] sm:w-[320px] sm:h-[320px] md:w-[400px] md:h-[400px] lg:w-[500px] lg:h-[500px] flex items-center justify-center">
               {/* Gold glow behind logo */}
               <div
                 className="absolute inset-0 rounded-full opacity-25 blur-[60px] lg:blur-[80px]"
@@ -104,7 +105,7 @@ export default function HomePage() {
               <img
                 src="/logo-hero.png"
                 alt="Randyproductions"
-                className="relative w-[65%] h-auto max-h-[70vh] object-contain z-10"
+                className="relative w-[75%] h-auto max-h-[70vh] object-contain z-10"
                 style={{
                   filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.3)) drop-shadow(0 0 60px rgba(212,175,55,0.15))',
                 }}
@@ -250,4 +251,5 @@ export default function HomePage() {
     </div>
   );
 }
+```
               
