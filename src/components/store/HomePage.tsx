@@ -79,8 +79,8 @@ export default function HomePage() {
             {/* Quick stats */}
             <div className="flex gap-10 mt-14 pt-8 border-t border-[rgba(255,255,255,0.05)] justify-center lg:justify-start">
               {[
-                { num: `${beats.filter(b => !b.tags.includes('Loop Kit')).length}+`, label: 'Beats' },
-                { num: `${beats.filter(b => b.tags.includes('Loop Kit')).length}+`, label: 'Loop Kits' },
+            { num: beats.filter(b => !b.tags.includes('Loop Kit')).length + '+', label: 'Beats' },
+{ num: beats.filter(b => b.tags.includes('Loop Kit')).length + '+', label: 'Loop Kits' },
                 { num: '24h', label: 'Delivery' },
               ].map(s => (
                 <div key={s.label}>
