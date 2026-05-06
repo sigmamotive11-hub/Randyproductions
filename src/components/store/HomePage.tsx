@@ -1,18 +1,7 @@
 'use client';
 
 import { useStore } from '@/store/use-store';
-import dynamic from 'next/dynamic';
 import type { Beat } from '@/data/beats';
-
-// Dynamic import Three.js to avoid SSR issues — it only renders on client
-const ThreeHero = dynamic(() => import('@/components/store/ThreeHero'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center">
-      <div className="w-12 h-12 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin opacity-30" />
-    </div>
-  ),
-});
 
 export default function HomePage() {
   const { beats, setCurrentBeat, setShowCheckout, setShowAuth, user, setView } = useStore();
@@ -45,10 +34,11 @@ export default function HomePage() {
             }} />
         </div>
 
-        {/* Hero content — text left, 3D drum right */}
-        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full flex items-center min-h-screen">
+        {/* Hero content — stacked on mobile, text left + logo right on desktop */}
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full flex flex-col lg:flex-row items-center min-h-screen lg:items-center gap-8 lg:gap-0">
+
           {/* Left: Text content */}
-          <div className="flex-1 min-w-0 pt-24 pb-20">
+          <div className="flex-1 min-w-0 pt-16 pb-8 lg:pt-24 lg:pb-20 text-center lg:text-left order-2 lg:order-1">
             {/* Tag */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(212,175,55,0.25)] mb-8">
               <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
@@ -68,12 +58,12 @@ export default function HomePage() {
             </p>
 
             {/* Description */}
-            <p className="text-[rgba(255,255,255,0.5)] text-base md:text-lg leading-relaxed mb-10 max-w-[480px]">
+            <p className="text-[rgba(255,255,255,0.5)] text-base md:text-lg leading-relaxed mb-10 max-w-[480px] mx-auto lg:mx-0">
               Premium beats and loop kits crafted for the next generation of Drill, dark trap, and afrobeat. Every purchase includes WAV + Stems.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
               <button onClick={() => setView('beats')}
                 className="group relative px-8 py-4 bg-[#d4af37] text-[#050505] text-sm font-extrabold uppercase tracking-[2px] rounded overflow-hidden transition-all duration-500 hover:shadow-[0_0_40px_rgba(212,175,55,0.3)]">
                 <span className="relative z-10">Browse Catalog</span>
@@ -86,7 +76,7 @@ export default function HomePage() {
             </div>
 
             {/* Quick stats */}
-            <div className="flex gap-10 mt-14 pt-8 border-t border-[rgba(255,255,255,0.05)]">
+            <div className="flex gap-10 mt-14 pt-8 border-t border-[rgba(255,255,255,0.05)] justify-center lg:justify-start">
               {[
                 { num: `${beats.filter(b => !b.tags.includes('Loop Kit')).length}+`, label: 'Beats' },
                 { num: `${beats.filter(b => b.tags.includes('Loop Kit')).length}+`, label: 'Loop Kits' },
@@ -100,12 +90,28 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: 3D Golden Drum */}
-          <div className="hidden lg:flex flex-1 items-center justify-center h-screen relative">
-            <div className="w-full h-full max-w-[600px] relative">
-              <ThreeHero />
+          {/* Right: 2D Logo with gold glow */}
+          <div className="flex flex-1 items-center justify-center relative order-1 lg:order-2 w-full lg:h-screen lg:w-auto">
+            <div className="relative w-[180px] h-[180px] sm:w-[240px] sm:h-[240px] md:w-[300px] md:h-[300px] lg:w-[380px] lg:h-[380px] flex items-center justify-center">
+              {/* Gold glow behind logo */}
+              <div
+                className="absolute inset-0 rounded-full opacity-25 blur-[60px] lg:blur-[80px]"
+                style={{
+                  background: 'radial-gradient(circle, rgba(212,175,55,0.5) 0%, transparent 70%)',
+                }}
+              />
+              {/* Logo image with float animation */}
+              <img
+                src="/logo-hero.png"
+                alt="Randyproductions"
+                className="relative w-[65%] h-auto max-h-[70vh] object-contain animate-[float_6s_ease-in-out_infinite] z-10"
+                style={{
+                  filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.3)) drop-shadow(0 0 60px rgba(212,175,55,0.15))',
+                }}
+              />
             </div>
           </div>
+
         </div>
       </section>
 
@@ -121,7 +127,7 @@ export default function HomePage() {
             </div>
             <button onClick={() => setView('beats')}
               className="hidden md:flex items-center gap-2 text-[#888] text-sm hover:text-[#d4af37] transition-colors uppercase tracking-wider">
-              View All →
+              View All &rarr;
             </button>
           </div>
 
@@ -155,9 +161,9 @@ export default function HomePage() {
                     {beat.tags.map(tag => (
                       <span key={tag} className="text-xs text-[rgba(255,255,255,0.3)] uppercase tracking-wider">#{tag}</span>
                     ))}
-                    <span className="text-xs text-[rgba(255,255,255,0.15)]">•</span>
+                    <span className="text-xs text-[rgba(255,255,255,0.15)]">&bull;</span>
                     <span className="text-xs text-[rgba(255,255,255,0.3)]">{beat.bpm} BPM</span>
-                    <span className="text-xs text-[rgba(255,255,255,0.15)]">•</span>
+                    <span className="text-xs text-[rgba(255,255,255,0.15)]">&bull;</span>
                     <span className="text-xs text-[rgba(255,255,255,0.3)]">{beat.key}</span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -174,7 +180,7 @@ export default function HomePage() {
 
           <div className="md:hidden text-center mt-8">
             <button onClick={() => setView('beats')} className="btn-outline text-sm px-6 py-3 rounded-lg">
-              View All Beats →
+              View All Beats &rarr;
             </button>
           </div>
         </div>
