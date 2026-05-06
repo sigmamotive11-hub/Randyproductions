@@ -100,11 +100,11 @@ export default function HomePage() {
                   background: 'radial-gradient(circle, rgba(212,175,55,0.5) 0%, transparent 70%)',
                 }}
               />
-              {/* Logo image with float animation */}
+              {/* Logo image — static */}
               <img
                 src="/logo-hero.png"
                 alt="Randyproductions"
-                className="relative w-[65%] h-auto max-h-[70vh] object-contain animate-[float_6s_ease-in-out_infinite] z-10"
+                className="relative w-[65%] h-auto max-h-[70vh] object-contain z-10"
                 style={{
                   filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.3)) drop-shadow(0 0 60px rgba(212,175,55,0.15))',
                 }}
@@ -250,3 +250,4 @@ export default function HomePage() {
     </div>
   );
 }
+              
