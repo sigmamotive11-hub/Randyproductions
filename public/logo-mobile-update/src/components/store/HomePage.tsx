@@ -35,9 +35,9 @@ export default function HomePage() {
         </div>
 
         {/* Hero content — text left, logo right */}
-        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full flex items-center min-h-screen">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-16 w-full flex flex-col lg:flex-row items-center min-h-screen lg:items-center gap-8 lg:gap-0">
           {/* Left: Text content */}
-          <div className="flex-1 min-w-0 pt-24 pb-20">
+          <div className="flex-1 min-w-0 pt-16 pb-8 lg:pt-24 lg:pb-20 text-center lg:text-left order-2 lg:order-1">
             {/* Tag */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(212,175,55,0.25)] mb-8">
               <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
@@ -89,23 +89,39 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: 2D Logo with glow */}
-          <div className="hidden lg:flex flex-1 items-center justify-center h-screen relative">
-            <div className="relative">
-              {/* Subtle white glow behind logo */}
+          {/* Right: 2D Logo with gold glow */}
+          <div className="flex flex-1 items-center justify-center relative order-1 lg:order-2 w-full lg:h-screen lg:w-auto">
+            <div className="relative w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] md:w-[320px] md:h-[320px] lg:w-[400px] lg:h-[400px] flex items-center justify-center">
+              {/* Gold glow behind logo */}
               <div
-                className="absolute inset-0 rounded-full opacity-15 blur-[60px]"
+                className="absolute inset-0 rounded-full opacity-25 blur-[60px] lg:blur-[80px]"
                 style={{
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+                  background: 'radial-gradient(circle, rgba(212,175,55,0.5) 0%, transparent 70%)',
                 }}
               />
+              {/* Orbit ring 1 */}
+              <div className="hero-orbit-ring absolute inset-[-15%] rounded-full border border-[rgba(212,175,55,0.15)]" />
+              {/* Orbit ring 2 */}
+              <div className="hero-orbit-ring-reverse absolute inset-[-30%] rounded-full border border-dashed border-[rgba(212,175,55,0.08)]" />
+              {/* Orbit ring 3 — solid thin */}
+              <div className="hero-orbit-ring absolute inset-[-8%] rounded-full border border-[rgba(212,175,55,0.1)]" style={{ animationDuration: '12s' }} />
+              {/* Orbiting dot */}
+              <div className="absolute inset-[-15%] animate-[orbit-spin_8s_linear_infinite]">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.6)]" />
+              </div>
+              {/* Second orbiting dot (opposite side, slower) */}
+              <div className="absolute inset-[-30%] animate-[orbit-spin_14s_linear_infinite_reverse]">
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#d4af37] opacity-60 shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
+              </div>
+              {/* Pulse ring */}
+              <div className="hero-pulse-ring absolute inset-0 rounded-full border border-[rgba(212,175,55,0.2)]" />
               {/* Logo image with float animation */}
               <img
                 src="/logo-hero.png"
                 alt="Randyproductions"
-                className="relative w-[380px] h-auto max-h-[75vh] object-contain animate-[float_6s_ease-in-out_infinite]"
+                className="relative w-[65%] h-auto max-h-[70vh] object-contain animate-[float_6s_ease-in-out_infinite] z-10"
                 style={{
-                  filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.1)) drop-shadow(0 0 60px rgba(255,255,255,0.05))',
+                  filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.3)) drop-shadow(0 0 60px rgba(212,175,55,0.15))',
                 }}
               />
             </div>
@@ -135,18 +151,24 @@ export default function HomePage() {
                 onClick={() => handlePlay(beat)}
                 className="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                 style={{ background: 'linear-gradient(135deg, rgba(20,20,20,0.8), rgba(10,10,10,0.95))', border: '1px solid rgba(255,255,255,0.05)' }}>
+                {/* Number */}
                 <div className="absolute top-4 left-5 text-6xl font-black text-[rgba(255,255,255,0.03)] leading-none">
                   {String(idx + 1).padStart(2, '0')}
                 </div>
+
+                {/* Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img src={beat.image} alt={beat.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+                  {/* Play overlay */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <div className="w-14 h-14 rounded-full bg-[#d4af37] flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.4)]">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#050505"><polygon points="6,3 20,12 6,21" /></svg>
                     </div>
                   </div>
                 </div>
+
+                {/* Info */}
                 <div className="p-6">
                   <h3 className="text-white text-lg font-bold uppercase tracking-wider mb-2">{beat.title}</h3>
                   <div className="flex items-center gap-3 mb-5">
