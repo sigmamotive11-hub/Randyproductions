@@ -1,4 +1,3 @@
-```tsx
 'use client';
 
 import { useStore } from '@/store/use-store';
@@ -251,5 +250,5 @@ export default function HomePage() {
     </div>
   );
 }
-```
+
               
