@@ -1,13 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// db.ts — Supabase is the primary database.
+// This file is kept as a stub in case anything imports it.
+// All database operations use src/lib/supabase.ts instead.
+export {};
