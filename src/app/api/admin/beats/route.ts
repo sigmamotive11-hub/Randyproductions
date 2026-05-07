@@ -1,4 +1,9 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +19,7 @@ export async function POST(req: NextRequest) {
       stems_link: body.stems_link || '',
       tags: body.tags || [],
     };
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminClient
       .from('beats')
       .insert([beatData])
       .select();
@@ -31,7 +36,7 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const { error } = await supabaseAdmin
+    const { error } = await adminClient
       .from('beats')
       .delete()
       .eq('id', id);
