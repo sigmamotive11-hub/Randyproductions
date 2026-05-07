@@ -1,3 +1,4 @@
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useStore } from '@/store/use-store';
@@ -9,6 +10,8 @@ import {
   Upload, DollarSign, ShoppingBag, UserCheck
 } from 'lucide-react';
 
+const API = '/api/admin/beats';
+
 type AdminTab = 'dashboard' | 'tracks' | 'customers';
 
 export default function AdminDashboard() {
@@ -19,10 +22,8 @@ export default function AdminDashboard() {
   const [uploadType, setUploadType] = useState<'Beat' | 'Loop Kit'>('Beat');
   const [newBeat, setNewBeat] = useState({
     title: '', bpm: '', key: '', price: '49.99',
-    previewLink: '', wavLink: '', stemsLink: '',
+    coverLink: '', previewLink: '', wavLink: '', stemsLink: '',
   });
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   // Load beats from Supabase on mount
   useEffect(() => {
@@ -55,18 +56,9 @@ export default function AdminDashboard() {
     e.preventDefault();
     setIsPublishing(true);
     try {
-      let imageUrl = 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
+      const imageUrl = newBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
 
-      if (coverFile) {
-        const fileExt = coverFile.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('covers').upload(fileName, coverFile);
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('covers').getPublicUrl(fileName);
-        imageUrl = urlData.publicUrl;
-      }
-
-      const beatData = {
+      const body = {
         title: newBeat.title,
         bpm: uploadType === 'Beat' ? (newBeat.bpm || '-') : '-',
         key: newBeat.key || '-',
@@ -78,13 +70,18 @@ export default function AdminDashboard() {
         tags: [uploadType],
       };
 
-      const { data, error } = await supabase.from('beats').insert([beatData]).select();
-      if (error) throw error;
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
 
       const savedBeat = {
-        ...data[0],
-        wav_link: data[0].wav_link || '',
-        stems_link: data[0].stems_link || '',
+        ...json,
+        wav_link: json.wav_link || '',
+        stems_link: json.stems_link || '',
       } as Beat;
 
       setBeats([savedBeat, ...beats]);
@@ -101,8 +98,9 @@ export default function AdminDashboard() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this track permanently?')) return;
     try {
-      const { error } = await supabase.from('beats').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch(API + '?id=' + id, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Delete failed');
       setBeats(beats.filter(b => b.id !== id));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Delete failed';
@@ -111,19 +109,7 @@ export default function AdminDashboard() {
   };
 
   const resetForm = () => {
-    setNewBeat({ title: '', bpm: '', key: '', price: '49.99', previewLink: '', wavLink: '', stemsLink: '' });
-    setCoverFile(null);
-    setCoverPreview(null);
-  };
-
-  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCoverFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setCoverPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+    setNewBeat({ title: '', bpm: '', key: '', price: '49.99', coverLink: '', previewLink: '', wavLink: '', stemsLink: '' });
   };
 
   const sidebarItems: { tab: AdminTab; icon: typeof LayoutDashboard; label: string }[] = [
@@ -345,12 +331,11 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-group">
-                <label>Cover Art (Local Image Upload)</label>
-                {coverPreview && (
-                  <img src={coverPreview} alt="Cover preview" className="w-24 h-24 rounded object-cover mb-3 border border-[rgba(212,175,55,0.15)]" />
-                )}
-                <input type="file" accept="image/*" onChange={handleCoverSelect}
-                  className="w-full p-3 bg-[rgba(255,255,255,0.05)] border border-[rgba(212,175,55,0.15)] text-white rounded" />
+                <label>Cover Art (Image URL)</label>
+                <input type="url" value={newBeat.coverLink}
+                  onChange={e => setNewBeat({ ...newBeat, coverLink: e.target.value })}
+                  placeholder="https://i.imgur.com/...png or any image link" />
+                <small>Paste a link to your cover art image. Leave blank for default.</small>
               </div>
 
               <div className="form-group">
