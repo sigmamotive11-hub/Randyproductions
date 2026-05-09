@@ -5,13 +5,11 @@ import { Play, Pause, ShoppingCart, SkipBack, SkipForward } from 'lucide-react';
 import { useStore } from '@/store/use-store';
 import type { Beat } from '@/data/beats';
 
-const PREVIEW_LIMIT = 60;
-
 function formatTime(time: number) {
   if (!time || isNaN(time)) return '0:00';
   const minutes = Math.floor(time / 60);
   const seconds = Math.floor(time % 60);
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 }
 
 export default function AudioPlayer() {
@@ -19,6 +17,7 @@ export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -29,6 +28,9 @@ export default function AudioPlayer() {
     }
     const audio = new Audio(currentBeat.audio);
     audioRef.current = audio;
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+    });
     audio.play().then(() => setIsPlaying(true)).catch(() => {});
     setProgress(0);
     setCurrentTime(0);
@@ -40,17 +42,11 @@ export default function AudioPlayer() {
 
     const handleTimeUpdate = () => {
       const t = audio.currentTime;
-      if (t >= PREVIEW_LIMIT) {
-        audio.pause();
-        audio.currentTime = 0;
-        setIsPlaying(false);
-        setProgress(0);
-        setCurrentTime(0);
-      } else {
-        const duration = Math.min(audio.duration || PREVIEW_LIMIT, PREVIEW_LIMIT);
-        setProgress((t / duration) * 100);
-        setCurrentTime(t);
+      const dur = audio.duration || 0;
+      if (dur > 0) {
+        setProgress((t / dur) * 100);
       }
+      setCurrentTime(t);
     };
 
     const handleEnded = () => setIsPlaying(false);
@@ -78,10 +74,11 @@ export default function AudioPlayer() {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = rect.width;
-    const duration = Math.min(audioRef.current.duration || PREVIEW_LIMIT, PREVIEW_LIMIT);
-    const newTime = (x / width) * duration;
+    const dur = audioRef.current.duration || 0;
+    if (dur <= 0) return;
+    const newTime = (x / width) * dur;
     audioRef.current.currentTime = newTime;
-    setProgress((newTime / duration) * 100);
+    setProgress((newTime / dur) * 100);
     setCurrentTime(newTime);
   };
 
@@ -110,12 +107,12 @@ export default function AudioPlayer() {
   if (!currentBeat) return null;
 
   return (
-    <div className={`audio-player-bar ${currentBeat ? 'active' : ''}`}>
+    <div className={'audio-player-bar ' + (currentBeat ? 'active' : '')}>
       <div className="flex items-center gap-4 w-[200px] md:w-[300px] min-w-0 shrink-0">
         <img src={currentBeat.image} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
         <div className="min-w-0">
           <h4 className="text-sm font-bold truncate">{currentBeat.title}</h4>
-          <p className="text-xs text-[#888]">{currentBeat.bpm} BPM &bull; {currentBeat.key}</p>
+          <p className="text-xs text-[#888]">{currentBeat.bpm} BPM {'\u2022'} {currentBeat.key}</p>
         </div>
       </div>
 
@@ -133,9 +130,9 @@ export default function AudioPlayer() {
         <div className="flex items-center gap-2 flex-1 text-xs text-[#888]">
           <span className="shrink-0 w-8 text-right">{formatTime(currentTime)}</span>
           <div className="progress-bar" onClick={handleScrub}>
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+            <div className="progress-fill" style={{ width: progress + '%' }} />
           </div>
-          <span className="shrink-0 w-8">{formatTime(PREVIEW_LIMIT)}</span>
+          <span className="shrink-0 w-8">{formatTime(duration)}</span>
         </div>
       </div>
 
