@@ -1,484 +1,361 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
+import { useStore } from '@/store/use-store';
+import { supabase } from '@/lib/supabase';
+import { fallbackBeats } from '@/data/beats';
+import type { Beat } from '@/data/beats';
+import {
+  LayoutDashboard, Music, Users, Plus, Trash2, ArrowLeft,
+  Upload, DollarSign, ShoppingBag, UserCheck
+} from 'lucide-react';
 
-interface Beat {
-  id: number;
-  title: string;
-  artist: string;
-  bpm: string;
-  key: string;
-  genre: string;
-  tags: string;
-  price: string;
-  cover_art: string;
-  audio: string;
-}
+const API = '/api/admin/beats';
+
+type AdminTab = 'dashboard' | 'tracks' | 'customers';
 
 export default function AdminDashboard() {
-  const [beats, setBeats] = useState<Beat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const [form, setForm] = useState({
-    title: "",
-    artist: "",
-    bpm: "",
-    key: "",
-    genre: "",
-    tags: "",
-    price: "",
-    cover_art: "",
-    audio: "",
+  const { beats, setBeats, setView } = useStore();
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [showUpload, setShowUpload] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [uploadType, setUploadType] = useState<'Beat' | 'Loop Kit'>('Beat');
+  const [newBeat, setNewBeat] = useState({
+    title: '', bpm: '', key: '', price: '49.99',
+    coverLink: '', audioUrl: '',
   });
 
   useEffect(() => {
-    fetchBeats();
-  }, []);
-
-  async function fetchBeats() {
-    try {
-      const res = await fetch("/api/admin/beats", { method: "GET" });
-      if (!res.ok) throw new Error("Failed to fetch beats");
-      const data = await res.json();
-      setBeats(data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessage("Error fetching beats: " + msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setUploading(true);
-    setMessage("");
-
-    try {
-      const res = await fetch("/api/admin/beats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: form.title,
-          artist: form.artist,
-          bpm: form.bpm,
-          key: form.key,
-          genre: form.genre,
-          tags: form.tags,
-          price: form.price,
-          cover_art: form.cover_art,
-          audio: form.audio,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Upload failed");
+    const fetchBeats = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('beats')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          const formatted = data.map((b: Record<string, unknown>) => ({
+            ...b,
+            wav_link: b.wav_link || '',
+            stems_link: b.stems_link || '',
+            image: b.image || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
+          })) as Beat[];
+          setBeats(formatted);
+        } else {
+          setBeats(fallbackBeats);
+        }
+      } catch {
+        setBeats(fallbackBeats);
       }
+    };
+    fetchBeats();
+  }, [setBeats]);
 
-      setMessage("Beat uploaded successfully!");
-      setForm({
-        title: "",
-        artist: "",
-        bpm: "",
-        key: "",
-        genre: "",
-        tags: "",
-        price: "",
-        cover_art: "",
-        audio: "",
-      });
-      fetchBeats();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessage("Upload failed: " + msg);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm("Are you sure you want to delete this beat?")) return;
-
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPublishing(true);
     try {
-      const res = await fetch("/api/admin/beats", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+      const imageUrl = newBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
+
+      const body = {
+        title: newBeat.title,
+        bpm: uploadType === 'Beat' ? (newBeat.bpm || '-') : '-',
+        key: newBeat.key || '-',
+        price: parseFloat(newBeat.price),
+        image: imageUrl,
+        audio: newBeat.audioUrl,
+        tags: [uploadType],
+      };
+
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
 
-      if (!res.ok) throw new Error("Delete failed");
+      const savedBeat = {
+        ...json,
+        wav_link: json.wav_link || '',
+        stems_link: json.stems_link || '',
+      } as Beat;
 
-      setBeats(beats.filter((b) => b.id !== id));
-      setMessage("Beat deleted successfully.");
+      setBeats([savedBeat, ...beats]);
+      setShowUpload(false);
+      resetForm();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessage("Delete failed: " + msg);
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      alert('Upload failed: ' + msg);
+    } finally {
+      setIsPublishing(false);
     }
-  }
+  };
 
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loading}>Loading beats...</div>
-      </div>
-    );
-  }
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this track permanently?')) return;
+    try {
+      const res = await fetch(API + '?id=' + id, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Delete failed');
+      setBeats(beats.filter(b => b.id !== id));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Delete failed';
+      alert('Delete failed: ' + msg);
+    }
+  };
+
+  const resetForm = () => {
+    setNewBeat({ title: '', bpm: '', key: '', price: '49.99', coverLink: '', audioUrl: '' });
+  };
+
+  const sidebarItems: { tab: AdminTab; icon: typeof LayoutDashboard; label: string }[] = [
+    { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { tab: 'tracks', icon: Music, label: 'Content' },
+    { tab: 'customers', icon: Users, label: 'Audience' },
+  ];
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>Admin Dashboard</h1>
-
-      {message && (
-        <div
-          style={{
-            ...styles.message,
-            backgroundColor: message.includes("failed") ? "#7f1d1d" : "#14532d",
-          }}
-        >
-          {message}
+    <div className="flex min-h-screen bg-[#080808] text-white overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-[250px] border-r border-[rgba(212,175,55,0.15)] p-5 flex flex-col shrink-0 hidden md:flex"
+        style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <h2 className="text-[#d4af37] mb-10 text-sm font-bold tracking-[3px] text-center">RANDYPRODUCTIONS</h2>
+        <div className="flex flex-col gap-1">
+          {sidebarItems.map(({ tab, icon: Icon, label }) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={'flex items-center gap-3 px-4 py-3 text-left border-none rounded cursor-pointer transition-all duration-200 text-sm ' + (
+                activeTab === tab
+                  ? 'bg-[rgba(212,175,55,0.1)] text-[#d4af37] font-bold border-l-[3px] border-l-[#d4af37]'
+                  : 'bg-transparent text-[#888] hover:text-[#d4af37] border-l-[3px] border-l-transparent'
+              )}>
+              <Icon size={18} />
+              {label}
+            </button>
+          ))}
         </div>
-      )}
-
-      <div style={styles.card}>
-        <h2 style={styles.subheading}>Upload New Beat</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.row}>
-            <div style={styles.field}>
-              <label style={styles.label}>Title *</label>
-              <input
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                required
-                style={styles.input}
-                placeholder="Beat title"
-              />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Artist *</label>
-              <input
-                name="artist"
-                value={form.artist}
-                onChange={handleChange}
-                required
-                style={styles.input}
-                placeholder="Artist name"
-              />
-            </div>
-          </div>
-
-          <div style={styles.row}>
-            <div style={styles.field}>
-              <label style={styles.label}>BPM</label>
-              <input
-                name="bpm"
-                value={form.bpm}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g. 140"
-              />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Key</label>
-              <select
-                name="key"
-                value={form.key}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">Select key</option>
-                <option value="C Major">C Major</option>
-                <option value="C Minor">C Minor</option>
-                <option value="C# Major">C# Major</option>
-                <option value="C# Minor">C# Minor</option>
-                <option value="D Major">D Major</option>
-                <option value="D Minor">D Minor</option>
-                <option value="D# Major">D# Major</option>
-                <option value="D# Minor">D# Minor</option>
-                <option value="E Major">E Major</option>
-                <option value="E Minor">E Minor</option>
-                <option value="F Major">F Major</option>
-                <option value="F Minor">F Minor</option>
-                <option value="F# Major">F# Major</option>
-                <option value="F# Minor">F# Minor</option>
-                <option value="G Major">G Major</option>
-                <option value="G Minor">G Minor</option>
-                <option value="G# Major">G# Major</option>
-                <option value="G# Minor">G# Minor</option>
-                <option value="A Major">A Major</option>
-                <option value="A Minor">A Minor</option>
-                <option value="A# Major">A# Major</option>
-                <option value="A# Minor">A# Minor</option>
-                <option value="B Major">B Major</option>
-                <option value="B Minor">B Minor</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={styles.row}>
-            <div style={styles.field}>
-              <label style={styles.label}>Genre</label>
-              <input
-                name="genre"
-                value={form.genre}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g. Trap, Drill"
-              />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Price ($) *</label>
-              <input
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                required
-                style={styles.input}
-                placeholder="29.99"
-                type="number"
-                step="0.01"
-                min="0"
-              />
-            </div>
-          </div>
-
-          <div style={styles.fieldFull}>
-            <label style={styles.label}>Tags</label>
-            <input
-              name="tags"
-              value={form.tags}
-              onChange={handleChange}
-              style={styles.input}
-              placeholder="Comma separated, e.g. hard, dark, 808"
-            />
-          </div>
-
-          <div style={styles.fieldFull}>
-            <label style={styles.label}>Cover Art URL *</label>
-            <input
-              name="cover_art"
-              value={form.cover_art}
-              onChange={handleChange}
-              required
-              style={styles.input}
-              placeholder="Paste cover art image URL"
-            />
-          </div>
-
-          <div style={styles.fieldFull}>
-            <label style={styles.label}>Audio URL *</label>
-            <input
-              name="audio"
-              value={form.audio}
-              onChange={handleChange}
-              required
-              style={styles.input}
-              placeholder="Paste audio URL"
-            />
-          </div>
-
-          <button type="submit" disabled={uploading} style={styles.button}>
-            {uploading ? "Uploading..." : "Upload Beat"}
-          </button>
-        </form>
+        <div className="flex-1" />
+        <button onClick={() => setView('home')}
+          className="flex items-center gap-2 px-4 py-3 bg-transparent text-[#888] border border-[rgba(212,175,55,0.15)] rounded cursor-pointer text-sm hover:text-white transition-colors">
+          <ArrowLeft size={16} />
+          Back to Store
+        </button>
       </div>
 
-      <div style={styles.card}>
-        <h2 style={styles.subheading}>
-          {"Your Beats (" + beats.length + ")"}
-        </h2>
-        {beats.length === 0 ? (
-          <p style={styles.empty}>No beats uploaded yet.</p>
-        ) : (
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Cover</th>
-                  <th style={styles.th}>Title</th>
-                  <th style={styles.th}>Artist</th>
-                  <th style={styles.th}>BPM</th>
-                  <th style={styles.th}>Key</th>
-                  <th style={styles.th}>Genre</th>
-                  <th style={styles.th}>Price</th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {beats.map((beat) => (
-                  <tr key={beat.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      {beat.cover_art ? (
-                        <img
-                          src={beat.cover_art}
-                          alt={beat.title}
-                          style={styles.coverImg}
-                        />
-                      ) : (
-                        <span>No image</span>
-                      )}
-                    </td>
-                    <td style={styles.td}>{beat.title}</td>
-                    <td style={styles.td}>{beat.artist}</td>
-                    <td style={styles.td}>{beat.bpm || "-"}</td>
-                    <td style={styles.td}>{beat.key || "-"}</td>
-                    <td style={styles.td}>{beat.genre || "-"}</td>
-                    <td style={styles.td}>{"$" + beat.price}</td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => handleDelete(beat.id)}
-                        style={styles.deleteBtn}
-                      >
-                        Delete
+      {/* Mobile header */}
+      <div className="fixed top-0 left-0 right-0 z-50 md:hidden bg-[#080808] border-b border-[rgba(212,175,55,0.15)] px-4 py-3 flex items-center justify-between">
+        <h2 className="text-[#d4af37] text-xs font-bold tracking-[3px]">ADMIN STUDIO</h2>
+        <div className="flex gap-2">
+          {sidebarItems.map(({ tab, icon: Icon }) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={'p-2 rounded border-none cursor-pointer transition-all ' + (
+                activeTab === tab ? 'text-[#d4af37]' : 'text-[#888]'
+              )}>
+              <Icon size={18} />
+            </button>
+          ))}
+        </div>
+        <button onClick={() => setView('home')} className="text-[#888] bg-transparent border-none cursor-pointer">
+          <ArrowLeft size={18} />
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 md:p-10 overflow-y-auto pt-16 md:pt-6">
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="max-w-[1000px] mx-auto">
+            <h1 className="text-2xl font-bold mb-8">Store Dashboard</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+              {[
+                { label: 'Total Sales (28 days)', value: '$0.00', icon: DollarSign, color: '#d4af37' },
+                { label: 'Total Units Sold', value: '0', icon: ShoppingBag, color: '#4caf50' },
+                { label: 'Email Subscribers', value: '0', icon: UserCheck, color: '#2196f3' },
+              ].map(stat => (
+                <div key={stat.label} className="glass-card rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <stat.icon size={18} style={{ color: stat.color }} />
+                    <h3 className="text-[#888] text-sm">{stat.label}</h3>
+                  </div>
+                  <p className="text-4xl font-bold">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="glass-card rounded-lg p-6">
+              <h3 className="mb-4 font-bold">Recent Activity</h3>
+              <p className="text-[#888] text-sm">No recent purchases. Share your store link to get started!</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tracks Tab */}
+        {activeTab === 'tracks' && (
+          <div className="max-w-[1000px] mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+              <h1 className="text-2xl font-bold">Store Content</h1>
+              <div className="flex gap-3">
+                <button onClick={() => { setUploadType('Loop Kit'); setShowUpload(true); }}
+                  className="btn-outline text-xs px-4 py-2.5 rounded flex items-center gap-2">
+                  <Plus size={14} /> CREATE LOOP KIT
+                </button>
+                <button onClick={() => { setUploadType('Beat'); setShowUpload(true); }}
+                  className="btn-gold text-xs px-4 py-2.5 rounded flex items-center gap-2">
+                  <Plus size={14} /> CREATE BEAT
+                </button>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-lg overflow-hidden">
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[rgba(212,175,55,0.15)] text-[#888] text-sm">
+                      <th className="p-4">Content</th>
+                      <th className="p-4">Preview</th>
+                      <th className="p-4">Type</th>
+                      <th className="p-4">Price</th>
+                      <th className="p-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {beats.map(b => (
+                      <tr key={b.id} className="border-b border-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={b.image} className="w-10 h-10 rounded object-cover" alt="" />
+                            <span className="font-bold text-sm">{b.title}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-xs">
+                          {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
+                        </td>
+                        <td className="p-4 text-sm">{b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</td>
+                        <td className="p-4 text-[#d4af37] font-bold">${b.price}</td>
+                        <td className="p-4">
+                          <button onClick={() => handleDelete(b.id)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-transparent text-red-400 border border-red-400 rounded text-xs cursor-pointer hover:bg-red-400/10 transition-colors">
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {beats.length === 0 && (
+                      <tr><td colSpan={5} className="p-6 text-center text-[#888]">No tracks uploaded yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden p-4 flex flex-col gap-4">
+                {beats.map(b => (
+                  <div key={b.id} className="glass-card rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <img src={b.image} className="w-10 h-10 rounded object-cover" alt="" />
+                      <div className="flex-1">
+                        <p className="font-bold text-sm">{b.title}</p>
+                        <p className="text-[#d4af37] text-xs">${b.price} {'\u2022'} {b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</p>
+                      </div>
+                      <button onClick={() => handleDelete(b.id)} className="text-red-400 bg-transparent border-none cursor-pointer p-2">
+                        <Trash2 size={16} />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="text-center p-2 rounded text-xs" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <p className="text-[#888] mb-1">Preview Audio</p>
+                      {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Customers Tab */}
+        {activeTab === 'customers' && (
+          <div className="max-w-[1000px] mx-auto">
+            <h1 className="text-2xl font-bold mb-8">Audience</h1>
+            <div className="glass-card rounded-lg p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <Users size={24} className="text-[#888]" />
+                <div>
+                  <h3 className="font-bold">Customer Relationship List</h3>
+                  <p className="text-[#888] text-sm">Ready for backend sync. Your sales are currently at 0.</p>
+                </div>
+              </div>
+              <div className="text-center py-12" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                <p className="text-[#888] text-sm mb-2">No customer data available yet.</p>
+                <p className="text-[#555] text-xs">Customer records will populate here after your first sale via PayPal webhook.</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Upload Modal */}
+      {showUpload && (
+        <div className="modal-overlay" onClick={() => { setShowUpload(false); resetForm(); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold uppercase mb-6 pb-4 border-b border-[rgba(212,175,55,0.15)] flex items-center gap-3">
+              <Upload size={20} className="text-[#d4af37]" />
+              Upload {uploadType}
+            </h2>
+            <form onSubmit={handleUpload}>
+              <div className="form-group">
+                <label>Title (Required)</label>
+                <input type="text" required value={newBeat.title}
+                  onChange={e => setNewBeat({ ...newBeat, title: e.target.value })}
+                  placeholder={'e.g. ' + (uploadType === 'Beat' ? 'LONDON NIGHTS' : 'DARK MATTER VOL 1')} />
+              </div>
+
+              <div className="form-group">
+                <label>Cover Art (Image URL)</label>
+                <input type="url" value={newBeat.coverLink}
+                  onChange={e => setNewBeat({ ...newBeat, coverLink: e.target.value })}
+                  placeholder="https://i.imgur.com/...png or any image link" />
+                <small>Paste a link to your cover art image. Leave blank for default.</small>
+              </div>
+
+              <div className="form-group">
+                <label>Audio URL (Required)</label>
+                <input type="url" required value={newBeat.audioUrl}
+                  onChange={e => setNewBeat({ ...newBeat, audioUrl: e.target.value })}
+                  placeholder="Paste your audio file URL" />
+                <small>Paste the direct URL to your audio file (MP3/WAV). This plays on the public store.</small>
+              </div>
+
+              {uploadType === 'Beat' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label>BPM</label>
+                    <input type="number" value={newBeat.bpm}
+                      onChange={e => setNewBeat({ ...newBeat, bpm: e.target.value })} placeholder="140" />
+                  </div>
+                  <div className="form-group">
+                    <label>Key</label>
+                    <input type="text" value={newBeat.key}
+                      onChange={e => setNewBeat({ ...newBeat, key: e.target.value })} placeholder="C Min" />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Price ($)</label>
+                <input type="number" step="0.01" required value={newBeat.price}
+                  onChange={e => setNewBeat({ ...newBeat, price: e.target.value })} />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" className="btn-ghost flex-1 py-3" onClick={() => { setShowUpload(false); resetForm(); }}>Cancel</button>
+                <button type="submit" className="btn-gold flex-1" disabled={isPublishing}>
+                  {isPublishing ? 'Publishing...' : 'Publish'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "40px 20px",
-    color: "#ffffff",
-    fontFamily: "Arial, sans-serif",
-  },
-  heading: {
-    fontSize: "32px",
-    fontWeight: "700",
-    marginBottom: "32px",
-    textAlign: "center",
-  },
-  card: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: "12px",
-    padding: "24px",
-    marginBottom: "24px",
-    border: "1px solid #2a2a4a",
-  },
-  subheading: {
-    fontSize: "20px",
-    fontWeight: "600",
-    marginBottom: "20px",
-    color: "#e0e0ff",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  row: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  fieldFull: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  label: {
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#b0b0d0",
-  },
-  input: {
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "1px solid #3a3a5a",
-    backgroundColor: "#12122a",
-    color: "#ffffff",
-    fontSize: "14px",
-    outline: "none",
-  },
-  button: {
-    padding: "12px 24px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#6c5ce7",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: "600",
-    cursor: "pointer",
-    marginTop: "8px",
-  },
-  message: {
-    padding: "12px 16px",
-    borderRadius: "8px",
-    color: "#ffffff",
-    fontSize: "14px",
-    marginBottom: "20px",
-  },
-  loading: {
-    textAlign: "center",
-    fontSize: "18px",
-    color: "#b0b0d0",
-    paddingTop: "80px",
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  th: {
-    textAlign: "left",
-    padding: "10px 12px",
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#8888aa",
-    borderBottom: "1px solid #2a2a4a",
-    whiteSpace: "nowrap",
-  },
-  tr: {
-    borderBottom: "1px solid #1f1f3a",
-  },
-  td: {
-    padding: "12px",
-    fontSize: "14px",
-    whiteSpace: "nowrap",
-  },
-  coverImg: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "6px",
-    objectFit: "cover",
-  },
-  deleteBtn: {
-    padding: "6px 14px",
-    borderRadius: "6px",
-    border: "1px solid #ff4444",
-    backgroundColor: "transparent",
-    color: "#ff4444",
-    fontSize: "13px",
-    cursor: "pointer",
-  },
-  empty: {
-    color: "#666688",
-    textAlign: "center",
-    padding: "24px",
-  },
-};
