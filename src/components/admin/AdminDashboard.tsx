@@ -7,10 +7,11 @@ import { fallbackBeats } from '@/data/beats';
 import type { Beat } from '@/data/beats';
 import {
   LayoutDashboard, Music, Users, Plus, Trash2, ArrowLeft,
-  Upload, DollarSign, ShoppingBag, UserCheck
+  Upload, DollarSign, ShoppingBag, UserCheck, Music2
 } from 'lucide-react';
 
 const API = '/api/admin/beats';
+const UPLOAD_API = '/api/admin/upload';
 
 type AdminTab = 'dashboard' | 'tracks' | 'customers';
 
@@ -22,10 +23,12 @@ export default function AdminDashboard() {
   const [uploadType, setUploadType] = useState<'Beat' | 'Loop Kit'>('Beat');
   const [newBeat, setNewBeat] = useState({
     title: '', bpm: '', key: '', price: '49.99',
-    coverLink: '', previewLink: '', wavLink: '', stemsLink: '',
+    coverLink: '',
   });
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewName, setPreviewName] = useState('');
+  const [uploadProgress, setUploadProgress] = useState('');
 
-  // Load beats from Supabase on mount
   useEffect(() => {
     const fetchBeats = async () => {
       try {
@@ -54,8 +57,23 @@ export default function AdminDashboard() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!previewFile) {
+      alert('Please select a preview audio file.');
+      return;
+    }
     setIsPublishing(true);
     try {
+      setUploadProgress('Uploading audio...');
+
+      const formData = new FormData();
+      formData.append('file', previewFile);
+      const uploadRes = await fetch(UPLOAD_API, { method: 'POST', body: formData });
+      const uploadJson = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadJson.error || 'Audio upload failed');
+      const audioUrl = uploadJson.url;
+
+      setUploadProgress('Saving beat...');
+
       const imageUrl = newBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
 
       const body = {
@@ -64,9 +82,7 @@ export default function AdminDashboard() {
         key: newBeat.key || '-',
         price: parseFloat(newBeat.price),
         image: imageUrl,
-        audio: newBeat.previewLink,
-        wav_link: newBeat.wavLink,
-        stems_link: newBeat.stemsLink,
+        audio: audioUrl,
         tags: [uploadType],
       };
 
@@ -92,6 +108,7 @@ export default function AdminDashboard() {
       alert('Upload failed: ' + msg);
     } finally {
       setIsPublishing(false);
+      setUploadProgress('');
     }
   };
 
@@ -109,7 +126,18 @@ export default function AdminDashboard() {
   };
 
   const resetForm = () => {
-    setNewBeat({ title: '', bpm: '', key: '', price: '49.99', coverLink: '', previewLink: '', wavLink: '', stemsLink: '' });
+    setNewBeat({ title: '', bpm: '', key: '', price: '49.99', coverLink: '' });
+    setPreviewFile(null);
+    setPreviewName('');
+    setUploadProgress('');
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPreviewFile(file);
+      setPreviewName(file.name);
+    }
   };
 
   const sidebarItems: { tab: AdminTab; icon: typeof LayoutDashboard; label: string }[] = [
@@ -120,18 +148,17 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#080808] text-white overflow-hidden">
-      {/* Sidebar */}
       <div className="w-[250px] border-r border-[rgba(212,175,55,0.15)] p-5 flex flex-col shrink-0 hidden md:flex"
         style={{ background: 'rgba(255,255,255,0.02)' }}>
         <h2 className="text-[#d4af37] mb-10 text-sm font-bold tracking-[3px] text-center">RANDYPRODUCTIONS</h2>
         <div className="flex flex-col gap-1">
           {sidebarItems.map(({ tab, icon: Icon, label }) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-3 px-4 py-3 text-left border-none rounded cursor-pointer transition-all duration-200 text-sm ${
+              className={'flex items-center gap-3 px-4 py-3 text-left border-none rounded cursor-pointer transition-all duration-200 text-sm ' + (
                 activeTab === tab
                   ? 'bg-[rgba(212,175,55,0.1)] text-[#d4af37] font-bold border-l-[3px] border-l-[#d4af37]'
                   : 'bg-transparent text-[#888] hover:text-[#d4af37] border-l-[3px] border-l-transparent'
-              }`}>
+              )}>
               <Icon size={18} />
               {label}
             </button>
@@ -145,15 +172,14 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* Mobile header */}
       <div className="fixed top-0 left-0 right-0 z-50 md:hidden bg-[#080808] border-b border-[rgba(212,175,55,0.15)] px-4 py-3 flex items-center justify-between">
         <h2 className="text-[#d4af37] text-xs font-bold tracking-[3px]">ADMIN STUDIO</h2>
         <div className="flex gap-2">
           {sidebarItems.map(({ tab, icon: Icon }) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`p-2 rounded border-none cursor-pointer transition-all ${
+              className={'p-2 rounded border-none cursor-pointer transition-all ' + (
                 activeTab === tab ? 'text-[#d4af37]' : 'text-[#888]'
-              }`}>
+              )}>
               <Icon size={18} />
             </button>
           ))}
@@ -163,9 +189,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-6 md:p-10 overflow-y-auto pt-16 md:pt-6">
-        {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="max-w-[1000px] mx-auto">
             <h1 className="text-2xl font-bold mb-8">Store Dashboard</h1>
@@ -191,7 +215,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tracks Tab */}
         {activeTab === 'tracks' && (
           <div className="max-w-[1000px] mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -209,15 +232,12 @@ export default function AdminDashboard() {
             </div>
 
             <div className="glass-card rounded-lg overflow-hidden">
-              {/* Desktop table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[rgba(212,175,55,0.15)] text-[#888] text-sm">
                       <th className="p-4">Content</th>
-                      <th className="p-4">Preview (MP3)</th>
-                      <th className="p-4">WAV Link</th>
-                      <th className="p-4">Stems Link</th>
+                      <th className="p-4">Preview</th>
                       <th className="p-4">Type</th>
                       <th className="p-4">Price</th>
                       <th className="p-4">Actions</th>
@@ -233,13 +253,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="p-4 text-xs">
-                          {b.audio ? <span className="text-green-400">{'\u2714'} Set</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
-                        </td>
-                        <td className="p-4 text-xs">
-                          {b.wav_link ? <span className="text-green-400">{'\u2714'} Set</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
-                        </td>
-                        <td className="p-4 text-xs">
-                          {b.stems_link ? <span className="text-green-400">{'\u2714'} Set</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
+                          {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
                         </td>
                         <td className="p-4 text-sm">{b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</td>
                         <td className="p-4 text-[#d4af37] font-bold">${b.price}</td>
@@ -252,13 +266,12 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {beats.length === 0 && (
-                      <tr><td colSpan={7} className="p-6 text-center text-[#888]">No tracks uploaded yet.</td></tr>
+                      <tr><td colSpan={5} className="p-6 text-center text-[#888]">No tracks uploaded yet.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Mobile cards */}
               <div className="md:hidden p-4 flex flex-col gap-4">
                 {beats.map(b => (
                   <div key={b.id} className="glass-card rounded-lg p-4">
@@ -266,25 +279,15 @@ export default function AdminDashboard() {
                       <img src={b.image} className="w-10 h-10 rounded object-cover" alt="" />
                       <div className="flex-1">
                         <p className="font-bold text-sm">{b.title}</p>
-                        <p className="text-[#d4af37] text-xs">${b.price} &bull; {b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</p>
+                        <p className="text-[#d4af37] text-xs">${b.price} {'\u2022'} {b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</p>
                       </div>
                       <button onClick={() => handleDelete(b.id)} className="text-red-400 bg-transparent border-none cursor-pointer p-2">
                         <Trash2 size={16} />
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="text-center p-2 rounded" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <p className="text-[#888] mb-1">Preview</p>
-                        {b.audio ? <span className="text-green-400">{'\u2714'}</span> : <span className="text-red-400">{'\u2718'}</span>}
-                      </div>
-                      <div className="text-center p-2 rounded" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <p className="text-[#888] mb-1">WAV</p>
-                        {b.wav_link ? <span className="text-green-400">{'\u2714'}</span> : <span className="text-red-400">{'\u2718'}</span>}
-                      </div>
-                      <div className="text-center p-2 rounded" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <p className="text-[#888] mb-1">Stems</p>
-                        {b.stems_link ? <span className="text-green-400">{'\u2714'}</span> : <span className="text-red-400">{'\u2718'}</span>}
-                      </div>
+                    <div className="text-center p-2 rounded text-xs" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <p className="text-[#888] mb-1">Preview Audio</p>
+                      {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
                     </div>
                   </div>
                 ))}
@@ -293,7 +296,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Customers Tab */}
         {activeTab === 'customers' && (
           <div className="max-w-[1000px] mx-auto">
             <h1 className="text-2xl font-bold mb-8">Audience</h1>
@@ -314,7 +316,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Upload Modal */}
       {showUpload && (
         <div className="modal-overlay" onClick={() => { setShowUpload(false); resetForm(); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -327,7 +328,7 @@ export default function AdminDashboard() {
                 <label>Title (Required)</label>
                 <input type="text" required value={newBeat.title}
                   onChange={e => setNewBeat({ ...newBeat, title: e.target.value })}
-                  placeholder={`e.g. ${uploadType === 'Beat' ? 'LONDON NIGHTS' : 'DARK MATTER VOL 1'}`} />
+                  placeholder={'e.g. ' + (uploadType === 'Beat' ? 'LONDON NIGHTS' : 'DARK MATTER VOL 1')} />
               </div>
 
               <div className="form-group">
@@ -339,27 +340,17 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-group">
-                <label>Preview Link (MP3)</label>
-                <input type="url" required value={newBeat.previewLink}
-                  onChange={e => setNewBeat({ ...newBeat, previewLink: e.target.value })}
-                  placeholder="https://mega.nz/file/...mp3" />
-                <small>Low-quality or tagged MP3 used for in-browser audio previews on the public store.</small>
-              </div>
-
-              <div className="form-group">
-                <label>Purchase Link (WAV)</label>
-                <input type="url" required value={newBeat.wavLink}
-                  onChange={e => setNewBeat({ ...newBeat, wavLink: e.target.value })}
-                  placeholder="https://mega.nz/file/...wav" />
-                <small>High-quality WAV file. This link is emailed to the buyer automatically after payment.</small>
-              </div>
-
-              <div className="form-group">
-                <label>Stems Link (ZIP — Required)</label>
-                <input type="url" required value={newBeat.stemsLink}
-                  onChange={e => setNewBeat({ ...newBeat, stemsLink: e.target.value })}
-                  placeholder="https://mega.nz/file/...zip" />
-                <small>Trackout ZIP. Both WAV and Stems ZIP are emailed to every buyer after payment.</small>
+                <label>Preview Audio (Upload File)</label>
+                {previewName && (
+                  <div className="flex items-center gap-2 mb-3 p-3 rounded text-sm"
+                    style={{ background: 'rgba(212,175,55,0.1)', color: '#d4af37' }}>
+                    <Music2 size={16} />
+                    {previewName}
+                  </div>
+                )}
+                <input type="file" accept="audio/*" onChange={handleFileSelect}
+                  className="w-full p-3 bg-[rgba(255,255,255,0.05)] border border-[rgba(212,175,55,0.15)] text-white rounded" />
+                <small>Select your MP3 or WAV file from your computer. This will be playable on the public store.</small>
               </div>
 
               {uploadType === 'Beat' && (
@@ -385,8 +376,8 @@ export default function AdminDashboard() {
 
               <div className="flex gap-3 mt-6">
                 <button type="button" className="btn-ghost flex-1 py-3" onClick={() => { setShowUpload(false); resetForm(); }}>Cancel</button>
-                <button type="submit" className="btn-gold flex-1" disabled={isPublishing}>
-                  {isPublishing ? 'Publishing...' : 'Publish'}
+                <button type="submit" className="btn-gold flex-1" disabled={isPublishing || !previewFile}>
+                  {isPublishing ? (uploadProgress || 'Publishing...') : 'Publish'}
                 </button>
               </div>
             </form>
