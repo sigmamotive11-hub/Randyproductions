@@ -29,6 +29,7 @@ export async function POST(req: Request) {
         title: body.title,
         bpm: body.bpm || '-',
         key: body.key || '-',
+        genre: body.genre || '',
         price: body.price,
         image: body.image,
         audio: body.audio,
@@ -40,6 +41,29 @@ export async function POST(req: Request) {
     return Response.json(data[0]);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Upload failed';
+    return Response.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return Response.json({ error: 'Missing id' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('beats')
+      .update(updates)
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    return Response.json(data[0]);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Update failed';
     return Response.json({ error: msg }, { status: 500 });
   }
 }
