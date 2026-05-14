@@ -21,34 +21,27 @@ export default function Home() {
   const { view, beats, setBeats, setLoading, loading, user } = useStore();
   const fetchedRef = useRef(false);
 
-  // Load beats — use fallback immediately, then try Supabase in background
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
-    // Immediately show fallback beats so page renders (including 3D model)
     setBeats(fallbackBeats);
     setLoading(false);
 
-    // Then try Supabase in background
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     (async () => {
       try {
-        const { data } = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/beats?select=*&order=created_at.desc`,
-          {
-            headers: {
-              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-              Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`,
-            },
-            signal: controller.signal,
-          }
-        ).then(r => r.json());
+        const res = await fetch('/api/admin/beats', {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
 
         if (data && Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((b: Record<string, unknown>) => ({
+          const formatted = data.map((b) => ({
             ...b,
             wav_link: b.wav_link || '',
             stems_link: b.stems_link || '',
@@ -56,7 +49,6 @@ export default function Home() {
           }));
           setBeats(formatted);
         }
-        // If Supabase fails, we already have fallback beats showing
       } catch {
         // Keep fallback beats
       } finally {
@@ -65,12 +57,10 @@ export default function Home() {
     })();
   }, [setBeats, setLoading]);
 
-  // Auto-scroll on view change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [view]);
 
-  // Admin dashboard
   if (view === 'admin' && user?.isAdmin) {
     return <AdminDashboard />;
   }
