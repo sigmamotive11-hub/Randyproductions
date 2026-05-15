@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Beat } from '@/data/beats';
 
-export type View = 'home' | 'beats' | 'pricing' | 'licensing' | 'contact' | 'admin';
+export type View = 'home' | 'beats' | 'pricing' | 'licensing' | 'contact' | 'admin' | 'purchases';
 
 interface StoreState {
   // View routing
