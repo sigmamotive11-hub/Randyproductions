@@ -15,12 +15,14 @@ import BeatsPage from '@/components/store/BeatsPage';
 import PricingPage from '@/components/store/PricingPage';
 import LicensingPage from '@/components/store/LicensingPage';
 import ContactPage from '@/components/store/ContactPage';
+import PurchasesPage from '@/components/store/PurchasesPage';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 
 export default function Home() {
   const { view, beats, setBeats, setLoading, loading, user } = useStore();
   const fetchedRef = useRef(false);
 
+  // Load beats — use fallback immediately, then try Supabase in background
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -29,16 +31,20 @@ export default function Home() {
     setLoading(false);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 4000);
 
     (async () => {
       try {
-        const res = await fetch('/api/admin/beats', {
-          method: 'GET',
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Failed');
-        const data = await res.json();
+        const { data } = await fetch(
+          process.env.NEXT_PUBLIC_SUPABASE_URL + '/rest/v1/beats?select=*&order=created_at.desc',
+          {
+            headers: {
+              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+              Authorization: 'Bearer ' + (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
+            },
+            signal: controller.signal,
+          }
+        ).then(r => r.json());
 
         if (data && Array.isArray(data) && data.length > 0) {
           const formatted = data.map((b) => ({
@@ -57,10 +63,12 @@ export default function Home() {
     })();
   }, [setBeats, setLoading]);
 
+  // Auto-scroll on view change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [view]);
 
+  // Admin dashboard — only for admin
   if (view === 'admin' && user?.isAdmin) {
     return <AdminDashboard />;
   }
@@ -84,6 +92,7 @@ export default function Home() {
             {view === 'pricing' && <PricingPage />}
             {view === 'licensing' && <LicensingPage />}
             {view === 'contact' && <ContactPage />}
+            {view === 'purchases' && <PurchasesPage />}
           </>
         )}
       </main>
