@@ -22,7 +22,6 @@ export default function Home() {
   const { view, beats, setBeats, setLoading, loading, user } = useStore();
   const fetchedRef = useRef(false);
 
-  // Load beats — use fallback immediately, then try Supabase in background
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -30,22 +29,10 @@ export default function Home() {
     setBeats(fallbackBeats);
     setLoading(false);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-
     (async () => {
       try {
-        const { data } = await fetch(
-          process.env.NEXT_PUBLIC_SUPABASE_URL + '/rest/v1/beats?select=*&order=created_at.desc',
-          {
-            headers: {
-              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-              Authorization: 'Bearer ' + (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
-            },
-            signal: controller.signal,
-          }
-        ).then(r => r.json());
-
+        const res = await fetch('/api/admin/beats');
+        const data = await res.json();
         if (data && Array.isArray(data) && data.length > 0) {
           const formatted = data.map((b) => ({
             ...b,
@@ -57,8 +44,6 @@ export default function Home() {
         }
       } catch {
         // Keep fallback beats
-      } finally {
-        clearTimeout(timeout);
       }
     })();
   }, [setBeats, setLoading]);
