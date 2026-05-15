@@ -7,7 +7,7 @@ import { fallbackBeats } from '@/data/beats';
 import type { Beat } from '@/data/beats';
 import {
   LayoutDashboard, Music, Users, Plus, Trash2, ArrowLeft,
-  Upload, DollarSign, ShoppingBag, UserCheck, Edit3
+  Upload, DollarSign, ShoppingBag, UserCheck, Pencil, X
 } from 'lucide-react';
 
 const API = '/api/admin/beats';
@@ -15,62 +15,66 @@ const API = '/api/admin/beats';
 type AdminTab = 'dashboard' | 'tracks' | 'customers';
 
 export default function AdminDashboard() {
-  const { beats, setBeats, setView } = useStore();
+  const { beats, setBeats, setView, setUser } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [showUpload, setShowUpload] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [uploadType, setUploadType] = useState<'Beat' | 'Loop Kit'>('Beat');
-  const [editId, setEditId] = useState<string | null>(null);
   const [newBeat, setNewBeat] = useState({
     title: '', bpm: '', key: '', price: '29.99',
-    coverLink: '', audioUrl: '',
+    coverLink: '', audioLink: '',
   });
   const [editBeat, setEditBeat] = useState({
-    title: '', bpm: '', key: '', genre: '', price: '',
-    coverLink: '', audioUrl: '',
+    id: '', title: '', bpm: '', key: '', price: '',
+    coverLink: '', audioLink: '',
   });
+  const [uploadProgress, setUploadProgress] = useState('');
 
   useEffect(() => {
-    const fetchBeats = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('beats')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data && data.length > 0) {
-          const formatted = data.map((b: Record<string, unknown>) => ({
-            ...b,
-            wav_link: b.wav_link || '',
-            stems_link: b.stems_link || '',
-            image: b.image || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
-          })) as Beat[];
-          setBeats(formatted);
-        } else {
-          setBeats(fallbackBeats);
-        }
-      } catch {
-        setBeats(fallbackBeats);
-      }
-    };
     fetchBeats();
   }, [setBeats]);
 
+  const fetchBeats = async () => {
+    try {
+      const res = await fetch(API);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      if (json && json.length > 0) {
+        const formatted = json.map((b) => ({
+          ...b,
+          wav_link: b.wav_link || '',
+          stems_link: b.stems_link || '',
+          image: b.image || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
+        })) as Beat[];
+        setBeats(formatted);
+      } else {
+        setBeats(fallbackBeats);
+      }
+    } catch {
+      setBeats(fallbackBeats);
+    }
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newBeat.audioLink) {
+      alert('Please paste your audio URL.');
+      return;
+    }
     setIsPublishing(true);
     try {
+      setUploadProgress('Saving beat...');
+
       const imageUrl = newBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
 
       const body = {
         title: newBeat.title,
         bpm: uploadType === 'Beat' ? (newBeat.bpm || '-') : '-',
         key: newBeat.key || '-',
-        genre: '',
         price: parseFloat(newBeat.price),
         image: imageUrl,
-        audio: newBeat.audioUrl,
+        audio: newBeat.audioLink,
         tags: [uploadType],
       };
 
@@ -96,25 +100,24 @@ export default function AdminDashboard() {
       alert('Upload failed: ' + msg);
     } finally {
       setIsPublishing(false);
+      setUploadProgress('');
     }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editId) return;
     setIsPublishing(true);
     try {
-      const imageUrl = editBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop';
+      setUploadProgress('Updating beat...');
 
       const body = {
-        id: editId,
+        id: editBeat.id,
         title: editBeat.title,
         bpm: editBeat.bpm || '-',
         key: editBeat.key || '-',
-        genre: editBeat.genre || '',
         price: parseFloat(editBeat.price),
-        image: imageUrl,
-        audio: editBeat.audioUrl,
+        image: editBeat.coverLink || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
+        audio: editBeat.audioLink,
       };
 
       const res = await fetch(API, {
@@ -131,27 +134,26 @@ export default function AdminDashboard() {
         stems_link: json.stems_link || '',
       } as Beat;
 
-      setBeats(beats.map(b => b.id === editId ? updatedBeat : b));
+      setBeats(beats.map(b => b.id === updatedBeat.id ? updatedBeat : b));
       setShowEdit(false);
-      setEditId(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Update failed';
       alert('Update failed: ' + msg);
     } finally {
       setIsPublishing(false);
+      setUploadProgress('');
     }
   };
 
-  const openEditModal = (beat: Beat) => {
-    setEditId(beat.id);
+  const openEdit = (beat: Beat) => {
     setEditBeat({
-      title: beat.title || '',
+      id: beat.id,
+      title: beat.title,
       bpm: beat.bpm || '',
       key: beat.key || '',
-      genre: beat.genre || '',
-      price: String(beat.price) || '',
+      price: String(beat.price),
       coverLink: beat.image || '',
-      audioUrl: beat.audio || '',
+      audioLink: beat.audio || '',
     });
     setShowEdit(true);
   };
@@ -170,7 +172,8 @@ export default function AdminDashboard() {
   };
 
   const resetForm = () => {
-    setNewBeat({ title: '', bpm: '', key: '', price: '29.99', coverLink: '', audioUrl: '' });
+    setNewBeat({ title: '', bpm: '', key: '', price: '29.99', coverLink: '', audioLink: '' });
+    setUploadProgress('');
   };
 
   const sidebarItems: { tab: AdminTab; icon: typeof LayoutDashboard; label: string }[] = [
@@ -294,13 +297,13 @@ export default function AdminDashboard() {
                         <td className="p-4 text-xs">
                           {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
                         </td>
-                        <td className="p-4 text-sm">{b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</td>
+                        <td className="p-4 text-sm">{b.tags && b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</td>
                         <td className="p-4 text-[#d4af37] font-bold">${b.price}</td>
                         <td className="p-4">
                           <div className="flex gap-2">
-                            <button onClick={() => openEditModal(b)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-transparent text-[#d4af37] border border-[rgba(212,175,55,0.3)] rounded text-xs cursor-pointer hover:bg-[rgba(212,175,55,0.1)] transition-colors">
-                              <Edit3 size={12} /> Edit
+                            <button onClick={() => openEdit(b)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-transparent text-[#d4af37] border border-[#d4af37] rounded text-xs cursor-pointer hover:bg-[rgba(212,175,55,0.1)] transition-colors">
+                              <Pencil size={12} /> Edit
                             </button>
                             <button onClick={() => handleDelete(b.id)}
                               className="flex items-center gap-1 px-3 py-1.5 bg-transparent text-red-400 border border-red-400 rounded text-xs cursor-pointer hover:bg-red-400/10 transition-colors">
@@ -325,17 +328,18 @@ export default function AdminDashboard() {
                       <img src={b.image} className="w-10 h-10 rounded object-cover" alt="" />
                       <div className="flex-1">
                         <p className="font-bold text-sm">{b.title}</p>
-                        <p className="text-[#d4af37] text-xs">${b.price} {'\u2022'} {b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</p>
+                        <p className="text-[#d4af37] text-xs">${b.price} {'\u2022'} {b.tags && b.tags.includes('Loop Kit') ? 'Loop Kit' : 'Beat'}</p>
                       </div>
+                      <button onClick={() => openEdit(b)} className="text-[#d4af37] bg-transparent border-none cursor-pointer p-1">
+                        <Pencil size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(b.id)} className="text-red-400 bg-transparent border-none cursor-pointer p-1">
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEditModal(b)}
-                        className="flex items-center gap-1 px-3 py-2 bg-transparent text-[#d4af37] border border-[rgba(212,175,55,0.3)] rounded text-xs cursor-pointer">
-                        <Edit3 size={12} /> Edit
-                      </button>
-                      <button onClick={() => handleDelete(b.id)} className="flex items-center gap-1 px-3 py-2 bg-transparent text-red-400 border border-red-400 rounded text-xs cursor-pointer">
-                        <Trash2 size={12} /> Delete
-                      </button>
+                    <div className="text-center p-2 rounded text-xs" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <p className="text-[#888] mb-1">Preview Audio</p>
+                      {b.audio ? <span className="text-green-400">{'\u2714'} Uploaded</span> : <span className="text-red-400">{'\u2718'} Missing</span>}
                     </div>
                   </div>
                 ))}
@@ -385,16 +389,16 @@ export default function AdminDashboard() {
                 <label>Cover Art (Image URL)</label>
                 <input type="url" value={newBeat.coverLink}
                   onChange={e => setNewBeat({ ...newBeat, coverLink: e.target.value })}
-                  placeholder="https://i.imgur.com/...png or any image link" />
+                  placeholder="Paste image URL here (e.g. from Supabase Storage)" />
                 <small>Paste a link to your cover art image. Leave blank for default.</small>
               </div>
 
               <div className="form-group">
                 <label>Audio URL (Required)</label>
-                <input type="url" required value={newBeat.audioUrl}
-                  onChange={e => setNewBeat({ ...newBeat, audioUrl: e.target.value })}
-                  placeholder="Paste your audio file URL" />
-                <small>Paste the direct URL to your audio file (MP3/WAV).</small>
+                <input type="url" required value={newBeat.audioLink}
+                  onChange={e => setNewBeat({ ...newBeat, audioLink: e.target.value })}
+                  placeholder="Paste audio URL here (e.g. from Supabase Storage)" />
+                <small>Paste the link to your MP3 audio file. This will be playable on the public store.</small>
               </div>
 
               {uploadType === 'Beat' && (
@@ -421,7 +425,7 @@ export default function AdminDashboard() {
               <div className="flex gap-3 mt-6">
                 <button type="button" className="btn-ghost flex-1 py-3" onClick={() => { setShowUpload(false); resetForm(); }}>Cancel</button>
                 <button type="submit" className="btn-gold flex-1" disabled={isPublishing}>
-                  {isPublishing ? 'Publishing...' : 'Publish'}
+                  {isPublishing ? (uploadProgress || 'Publishing...') : 'Publish'}
                 </button>
               </div>
             </form>
@@ -431,11 +435,16 @@ export default function AdminDashboard() {
 
       {/* Edit Modal */}
       {showEdit && (
-        <div className="modal-overlay" onClick={() => { setShowEdit(false); setEditId(null); }}>
+        <div className="modal-overlay" onClick={() => setShowEdit(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold uppercase mb-6 pb-4 border-b border-[rgba(212,175,55,0.15)] flex items-center gap-3">
-              <Edit3 size={20} className="text-[#d4af37]" />
-              Edit Beat
+            <h2 className="text-xl font-bold uppercase mb-6 pb-4 border-b border-[rgba(212,175,55,0.15)] flex items-center justify-between">
+              <span className="flex items-center gap-3">
+                <Pencil size={20} className="text-[#d4af37]" />
+                Edit Beat
+              </span>
+              <button onClick={() => setShowEdit(false)} className="bg-transparent border-none text-[#888] cursor-pointer hover:text-white">
+                <X size={20} />
+              </button>
             </h2>
             <form onSubmit={handleEdit}>
               <div className="form-group">
@@ -445,36 +454,30 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-group">
-                <label>Cover Art (Image URL)</label>
+                <label>Cover Art URL</label>
                 <input type="url" value={editBeat.coverLink}
                   onChange={e => setEditBeat({ ...editBeat, coverLink: e.target.value })}
-                  placeholder="Paste cover art image URL" />
+                  placeholder="Paste image URL" />
               </div>
 
               <div className="form-group">
                 <label>Audio URL</label>
-                <input type="url" value={editBeat.audioUrl}
-                  onChange={e => setEditBeat({ ...editBeat, audioUrl: e.target.value })}
-                  placeholder="Paste audio file URL" />
+                <input type="url" value={editBeat.audioLink}
+                  onChange={e => setEditBeat({ ...editBeat, audioLink: e.target.value })}
+                  placeholder="Paste audio URL" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="form-group">
                   <label>BPM</label>
                   <input type="text" value={editBeat.bpm}
-                    onChange={e => setEditBeat({ ...editBeat, bpm: e.target.value })} placeholder="140" />
+                    onChange={e => setEditBeat({ ...editBeat, bpm: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Key</label>
                   <input type="text" value={editBeat.key}
-                    onChange={e => setEditBeat({ ...editBeat, key: e.target.value })} placeholder="C Min" />
+                    onChange={e => setEditBeat({ ...editBeat, key: e.target.value })} />
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label>Genre</label>
-                <input type="text" value={editBeat.genre}
-                  onChange={e => setEditBeat({ ...editBeat, genre: e.target.value })} placeholder="Trap, Drill" />
               </div>
 
               <div className="form-group">
@@ -484,9 +487,9 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button type="button" className="btn-ghost flex-1 py-3" onClick={() => { setShowEdit(false); setEditId(null); }}>Cancel</button>
+                <button type="button" className="btn-ghost flex-1 py-3" onClick={() => setShowEdit(false)}>Cancel</button>
                 <button type="submit" className="btn-gold flex-1" disabled={isPublishing}>
-                  {isPublishing ? 'Saving...' : 'Save Changes'}
+                  {isPublishing ? (uploadProgress || 'Saving...') : 'Save Changes'}
                 </button>
               </div>
             </form>
