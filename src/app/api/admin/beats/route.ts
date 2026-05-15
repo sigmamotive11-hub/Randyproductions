@@ -1,80 +1,102 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+function getServiceClient() {
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(supabaseUrl, serviceKey);
+}
 
+// GET — fetch all beats
 export async function GET() {
   try {
+    const supabase = getServiceClient();
     const { data, error } = await supabase
       .from('beats')
       .select('*')
       .order('created_at', { ascending: false });
-
     if (error) throw error;
-    return Response.json(data || []);
+    return NextResponse.json(data || []);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to fetch beats';
-    return Response.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+// POST — create a new beat
+export async function POST(req: NextRequest) {
   try {
+    const supabase = getServiceClient();
     const body = await req.json();
-    const { data, error } = await supabase
-      .from('beats')
-      .insert([{
-        title: body.title,
-        bpm: body.bpm || '-',
-        key: body.key || '-',
-        genre: body.genre || '',
-        price: body.price,
-        image: body.image,
-        audio: body.audio,
-        tags: body.tags || [],
-      }])
-      .select();
 
-    if (error) throw error;
-    return Response.json(data[0]);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Upload failed';
-    return Response.json({ error: msg }, { status: 500 });
-  }
-}
+    const { title, bpm, key, price, image, audio, tags } = body;
 
-export async function PUT(req: Request) {
-  try {
-    const body = await req.json();
-    const { id, ...updates } = body;
-
-    if (!id) {
-      return Response.json({ error: 'Missing id' }, { status: 400 });
+    if (!title || !audio) {
+      return NextResponse.json({ error: 'Title and audio URL are required' }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from('beats')
-      .update(updates)
-      .eq('id', id)
-      .select();
+      .insert({
+        title,
+        bpm: bpm || '-',
+        key: key || '-',
+        price: price || 29.99,
+        image: image || 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=500&auto=format&fit=crop',
+        audio,
+        tags: tags || ['Beat'],
+        wav_link: '',
+        stems_link: '',
+      })
+      .select()
+      .single();
 
     if (error) throw error;
-    return Response.json(data[0]);
+    return NextResponse.json(data, { status: 201 });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Update failed';
-    return Response.json({ error: msg }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Failed to create beat';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request) {
+// PUT — update an existing beat
+export async function PUT(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const supabase = getServiceClient();
+    const body = await req.json();
+    const { id, ...fields } = body;
 
     if (!id) {
-      return Response.json({ error: 'Missing id' }, { status: 400 });
+      return NextResponse.json({ error: 'Beat ID is required' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('beats')
+      .update(fields)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update beat';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+// DELETE — remove a beat
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = getServiceClient();
+    const id = req.nextUrl.searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Beat ID is required' }, { status: 400 });
     }
 
     const { error } = await supabase
@@ -83,9 +105,9 @@ export async function DELETE(req: Request) {
       .eq('id', id);
 
     if (error) throw error;
-    return Response.json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Delete failed';
-    return Response.json({ error: msg }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Failed to delete beat';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
